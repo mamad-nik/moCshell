@@ -17,7 +17,7 @@ char host[255];
 char *cwd;
 int cmdlength;
 int bg;
-char *built_in[] = {"echo","pwd","cd"};
+char *built_in[] = {"echo","pwd","cd","quit"};
 
 int pwd(int p) {
 	cwd = getcwd(NULL,0);
@@ -25,6 +25,15 @@ int pwd(int p) {
 	return 0;
 }
 
+int quit() {
+	printf("are you sure you want to quit? [Y/n] ");
+	int c = getchar();
+	if (c == 'Y' || c == 'y') {
+		exit(EXIT_SUCCESS);
+	} else {
+		return 0;
+	}
+}
 
 void checkbg() {
 	if (!strcmp("&", arg[cmdlength-1])) {
@@ -138,6 +147,9 @@ int check_cmd() {
 				break;
 			case 2:
 				cd();
+				break;
+			case 3:
+				quit();
 				break;
 			default:
 				exec_external();
