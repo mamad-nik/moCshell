@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+
 
 #define ARG_MAX 4096
 
@@ -19,6 +21,10 @@ char *cwd;
 int cmdlength;
 int bg;
 char *built_in[] = {"echo","pwd","cd","quit"};
+int redirect;
+char *filename;
+int stdout_fd;
+int filefd;
 
 
 // some self-implemented functions
@@ -58,6 +64,29 @@ int quit() {
 	}
 }
 
+int redirect_s() {
+	filefd = open(filename,  O_WRONLY | O_CREAT | O_TRUNC, 0644); 
+	if (filefd == -1) {
+		printf("error creating file: errno = %d\n",errno);
+		return 1;
+	}
+	stdout_fd = dup(STDOUT_FILENO);
+
+	if(dup2(filefd, STDOUT_FILENO) == -1) {
+		printf("error writing to file: errno = %d\n",errno);
+		return 1;
+	}
+	return 0;
+
+}
+int redirect_f() {
+	if (-1 == dup2(stdout_fd,STDOUT_FILENO)) {
+		printf("error restoring STDOUT_FILENO: errno = %d",errno);
+	}
+	close(filefd);
+	return 0;
+}
+
 // parsing command
 
 int get_input() {
@@ -85,14 +114,24 @@ void checkbg() {
 }
 
 int parse_simple_cmd() {
+	redirect = 0;
 	char *ptr = strtok(buff, " ");
 	cmd = ptr;
 	arg[0] = ptr;
+	int redlo;
 	int i = 1;
 	while(ptr != NULL) {
+		if (!strcmp(ptr,">")){
+			redirect = 1;
+			redlo = i - 1;
+		}
 		ptr = strtok(NULL, " ");
 		arg[i] = ptr;
 		i++;
+	}
+	if (redirect == 1){
+		filename = arg[redlo+1];
+		arg[redlo]= NULL;
 	}
 	cmdlength = i-1;
 	checkbg();
@@ -174,8 +213,10 @@ int main() {
 		if (1 == get_input()) {
 			continue;
 		}
-		int s = parse_simple_cmd();		
+		int s = parse_simple_cmd();	
+
+		if (redirect) redirect_s();
 		check_cmd();
-		
+		if (redirect) redirect_f();
 	}
 }
