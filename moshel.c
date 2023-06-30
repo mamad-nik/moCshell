@@ -7,7 +7,8 @@
 #include <sys/wait.h>
 
 #define ARG_MAX 4096
-  	
+
+// Global variables
 char buff[ARG_MAX];
 char *cmd;
 char *arg[ARG_MAX];
@@ -19,9 +20,31 @@ int cmdlength;
 int bg;
 char *built_in[] = {"echo","pwd","cd","quit"};
 
+
+// some self-implemented functions
 int pwd(int p) {
 	cwd = getcwd(NULL,0);
 	if (p == 1) printf("%s\n",cwd);
+	return 0;
+}
+
+int echo() {
+	for (int i = 1;i < cmdlength; i++) {
+		printf("%s ",arg[i]);
+	}
+    printf("\n");
+	return 0;	
+}
+int cd() {
+	if(arg[1] == NULL) {
+		arg[1] = home;
+		cwd = home;
+	}
+	if (chdir(arg[1])) {
+		printf("error changing directory: %d\n",errno);
+		return errno;
+	}
+	pwd(0);
 	return 0;
 }
 
@@ -33,6 +56,23 @@ int quit() {
 	} else {
 		return 0;
 	}
+}
+
+// parsing command
+
+int get_input() {
+	if (NULL == fgets(buff, ARG_MAX, stdin)){
+		printf("error fgets");
+		exit(EXIT_FAILURE);
+	}
+	if (buff[0] == '\n') {
+		return 1;
+	}
+	if ((strlen(buff) > 0) && (buff[strlen (buff) - 1] == '\n'))
+		buff[strlen (buff) - 1] = '\0';
+	printf("your order was: %s\n",buff);
+	return 0;
+		
 }
 
 void checkbg() {
@@ -59,43 +99,11 @@ int parse_simple_cmd() {
 	return cmdlength;
 }
 
-int echo() {
-	for (int i = 1;i < cmdlength; i++) {
-		printf("%s ",arg[i]);
-	}
-    printf("\n");
-	return 0;	
-}
-int cd() {
-	if(arg[1] == NULL) {
-		arg[1] = home;
-		cwd = home;
-	}
-	if (chdir(arg[1])) {
-		printf("error changing directory: %d\n",errno);
-		return errno;
-	}
-	pwd(0);
-	return 0;
-}
-int get_input() {
-	if (NULL == fgets(buff, ARG_MAX, stdin)){
-		printf("error fgets");
-		exit(EXIT_FAILURE);
-	}
-	if (buff[0] == '\n') {
-		return 1;
-	}
-	if ((strlen(buff) > 0) && (buff[strlen (buff) - 1] == '\n'))
-		buff[strlen (buff) - 1] = '\0';
-	printf("your order was: %s\n",buff);
-	return 0;
-		
-}
-
 void ps1() {
 	printf("%s@%s: %s$ ",user,host,cwd);
 }
+
+// initializing and setting some environment varables 
 int preparation() {
 	home = getenv("HOME");
 	user = getenv("USER");
@@ -107,6 +115,7 @@ int preparation() {
 	return 0;
 }
 
+// running commands that are not implemented
 int exec_external() {
 	pid_t pid;
 	int status;
